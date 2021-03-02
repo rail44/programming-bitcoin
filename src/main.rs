@@ -16,6 +16,10 @@ impl FieldElement {
         let num = (num % self.prime + self.prime) % self.prime;
         FieldElement { prime: self.prime, num }
     }
+
+    fn pow(&self, num: u32) -> Result<FieldElement> {
+        Ok(self.round(self.num.pow(num)))
+    }
 }
 
 impl ops::Add<FieldElement> for FieldElement {
@@ -47,11 +51,7 @@ impl ops::Mul<FieldElement> for FieldElement {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
         }
-        let mut num = 0;
-        for _ in 0..(other.num) {
-            num += self.num;
-        }
-        Ok(self.round(num))
+        Ok(self.round(self.num * other.num))
     }
 }
 
