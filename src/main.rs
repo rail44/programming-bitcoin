@@ -11,6 +11,11 @@ impl FieldElement {
     fn new(num: i32, prime: i32) -> FieldElement {
         FieldElement { prime, num }
     }
+
+    fn round(&self, num: i32) -> FieldElement {
+        let num = (num % self.prime + self.prime) % self.prime;
+        FieldElement { prime: self.prime, num }
+    }
 }
 
 impl ops::Add<FieldElement> for FieldElement {
@@ -20,8 +25,7 @@ impl ops::Add<FieldElement> for FieldElement {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
         }
-        let num = (self.num + other.num) % self.prime;
-        Ok(FieldElement { prime: self.prime, num })
+        Ok(self.round(self.num + other.num))
     }
 }
 
@@ -32,8 +36,22 @@ impl ops::Sub<FieldElement> for FieldElement {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
         }
-        let num = ((self.num - other.num) % self.prime) + self.prime;
-        Ok(FieldElement { prime: self.prime, num })
+        Ok(self.round(self.num - other.num))
+    }
+}
+
+impl ops::Mul<FieldElement> for FieldElement {
+    type Output = Result<FieldElement>;
+
+    fn mul(self, other: FieldElement) -> Result<FieldElement> {
+        if self.prime != other.prime {
+            return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
+        }
+        let mut num = 0;
+        for _ in 0..(other.num) {
+            num += self.num;
+        }
+        Ok(self.round(num))
     }
 }
 
@@ -51,6 +69,14 @@ fn test_sub() {
     let b = FieldElement::new(13, 19);
     let c = FieldElement::new(12, 19);
     assert_eq!((a - b).unwrap(), c);
+}
+
+#[test]
+fn test_mul() {
+    let a = FieldElement::new(6, 19);
+    let b = FieldElement::new(13, 19);
+    let c = FieldElement::new(2, 19);
+    assert_eq!((a * b).unwrap(), c);
 }
 
 fn main() {
