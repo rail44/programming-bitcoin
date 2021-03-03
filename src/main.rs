@@ -17,8 +17,10 @@ impl FieldElement {
         FieldElement { prime: self.prime, num }
     }
 
-    fn pow(&self, num: u32) -> Result<FieldElement> {
-        Ok(self.round(self.num.pow(num)))
+    fn pow(self, exponent: i32) -> FieldElement {
+        let n = self.round(exponent % (self.prime - 1));
+        let num = self.num.pow(n.num as u32);
+        self.round(num)
     }
 }
 
@@ -77,6 +79,13 @@ fn test_mul() {
     let b = FieldElement::new(13, 19);
     let c = FieldElement::new(2, 19);
     assert_eq!((a * b).unwrap(), c);
+}
+
+#[test]
+fn test_neg_pow() {
+    let a = FieldElement::new(7, 13);
+    let b = FieldElement::new(8, 13);
+    assert_eq!(FieldElement::pow(a, -3), b);
 }
 
 fn main() {
