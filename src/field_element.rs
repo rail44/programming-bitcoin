@@ -27,7 +27,7 @@ impl FieldElement {
         FieldElement::new(num, self.prime)
     }
 
-    fn pow(self, exponent: i64) -> FieldElement {
+    fn pow(&self, exponent: i64) -> FieldElement {
         let n = modulo(exponent, self.prime - 1);
         let num = self.num.modpow(&BigInt::from(n), &BigInt::from(self.prime));
         FieldElement {
