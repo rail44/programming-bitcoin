@@ -1,26 +1,33 @@
 use anyhow::{Result, anyhow};
+use num_bigint::BigInt;
+use num_traits::cast::ToPrimitive;
+
 use std::ops;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct FieldElement {
-    prime: i32,
-    num: i32,
+    prime: i64,
+    num: BigInt,
+}
+
+fn modulo(a: i64, b: i64) -> i64 {
+    (a % b + b) % b
 }
 
 impl FieldElement {
-    fn new(num: i32, prime: i32) -> FieldElement {
-        FieldElement { prime, num }
+    fn new(num: i64, prime: i64) -> FieldElement {
+        FieldElement { num: BigInt::from(num), prime }
     }
 
-    fn round(&self, num: i32) -> FieldElement {
-        let num = (num % self.prime + self.prime) % self.prime;
-        FieldElement { prime: self.prime, num }
+    fn round(&self, num: BigInt) -> FieldElement {
+        let num = modulo(num.to_i64().unwrap(), self.prime);
+        FieldElement::new(num, self.prime)
     }
 
-    fn pow(self, exponent: i32) -> FieldElement {
-        let n = self.round(exponent % (self.prime - 1));
-        let num = self.num.pow(n.num as u32);
-        self.round(num)
+    fn pow(self, exponent: i64) -> FieldElement {
+        let n = modulo(exponent, self.prime - 1);
+        let num = self.num.modpow(&BigInt::from(n), &BigInt::from(self.prime));
+        FieldElement { num, prime: self.prime }
     }
 }
 
@@ -31,7 +38,7 @@ impl ops::Add<FieldElement> for FieldElement {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
         }
-        Ok(self.round(self.num + other.num))
+        Ok(self.round(self.num.clone() + other.num))
     }
 }
 
@@ -40,9 +47,9 @@ impl ops::Sub<FieldElement> for FieldElement {
 
     fn sub(self, other: FieldElement) -> Result<FieldElement> {
         if self.prime != other.prime {
-            return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
+            return Err(anyhow!("Cannot sub two numbers in deffirent Fields"));
         }
-        Ok(self.round(self.num - other.num))
+        Ok(self.round(self.num.clone() - other.num))
     }
 }
 
@@ -51,9 +58,21 @@ impl ops::Mul<FieldElement> for FieldElement {
 
     fn mul(self, other: FieldElement) -> Result<FieldElement> {
         if self.prime != other.prime {
-            return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
+            return Err(anyhow!("Cannot mul two numbers in deffirent Fields"));
         }
-        Ok(self.round(self.num * other.num))
+        Ok(self.round(self.num.clone() * other.num))
+    }
+}
+
+impl ops::Div<FieldElement> for FieldElement {
+    type Output = Result<FieldElement>;
+
+    fn div(self, other: FieldElement) -> Result<FieldElement> {
+        if self.prime != other.prime {
+            return Err(anyhow!("Cannot div two numbers in deffirent Fields"));
+        }
+        let prime = self.prime as i64;
+        self * (other.pow(prime - 2))
     }
 }
 
@@ -82,10 +101,28 @@ fn test_mul() {
 }
 
 #[test]
+fn test_pow() {
+    let a = FieldElement::new(9, 19);
+    let b = FieldElement::new(7, 19);
+    assert_eq!(FieldElement::pow(a, 12), b);
+
+    let a = FieldElement::new(9, 19);
+    let b = FieldElement::new(1, 19);
+    assert_eq!(FieldElement::pow(a, 18), b);
+}
+
+#[test]
 fn test_neg_pow() {
     let a = FieldElement::new(7, 13);
-    let b = FieldElement::new(8, 13);
-    assert_eq!(FieldElement::pow(a, -3), b);
+    assert_eq!(FieldElement::pow(a.clone(), -3), FieldElement::pow(a, 9));
+}
+
+#[test]
+fn test_div() {
+    let a = FieldElement::new(2, 19);
+    let b = FieldElement::new(7, 19);
+    let c = FieldElement::new(3, 19);
+    assert_eq!((a / b).unwrap(), c);
 }
 
 fn main() {
