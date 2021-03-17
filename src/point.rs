@@ -38,11 +38,19 @@ impl CurvePoint {
         if y.pow(2) != x.pow(3) + a * x + b {
             return Err(anyhow!("({}, {}) is not on the curve", x, y));
         }
-        Ok(CurvePoint { a, b, p: Point::new(x, y) })
+        Ok(CurvePoint {
+            a,
+            b,
+            p: Point::new(x, y),
+        })
     }
 
     fn inf(a: i64, b: i64) -> CurvePoint {
-        CurvePoint { a, b, p: Point::Inf }
+        CurvePoint {
+            a,
+            b,
+            p: Point::Inf,
+        }
     }
 }
 
@@ -51,7 +59,11 @@ impl ops::Add<CurvePoint> for CurvePoint {
 
     fn add(self, other: CurvePoint) -> Result<CurvePoint> {
         if self.a != other.a || self.b != other.b {
-            return Err(anyhow!("Points {:?}, {:?} are not on the same curve", self, other));
+            return Err(anyhow!(
+                "Points {:?}, {:?} are not on the same curve",
+                self,
+                other
+            ));
         }
 
         if self.p == Point::Inf {
@@ -72,11 +84,18 @@ impl ops::Add<CurvePoint> for CurvePoint {
             return CurvePoint::new(x, y, self.a, self.b);
         }
 
-        if self_p.x == other_p.x && self_p.y != other_p.y {
+        if self_p.y != other_p.y {
             return Ok(CurvePoint::inf(self.a, self.b));
         }
 
-        panic!();
+        if self_p.y == 0 {
+            return Ok(CurvePoint::inf(self.a, self.b));
+        }
+
+        let s = (3 * self_p.x.pow(2) + self.a) / (2 * self_p.y);
+        let x = s.pow(2) - 2 * self_p.x;
+        let y = s * (self_p.x - x) - self_p.y;
+        CurvePoint::new(x, y, self.a, self.b)
     }
 }
 
@@ -94,4 +113,13 @@ fn test_add_1() {
     let p1 = CurvePoint::new(2, 5, 5, 7).unwrap();
     let p2 = CurvePoint::new(-1, -1, 5, 7).unwrap();
     assert_eq!((p1 + p2).unwrap(), CurvePoint::new(3, -7, 5, 7).unwrap());
+}
+
+#[test]
+fn test_add_2() {
+    let p1 = CurvePoint::new(-1, -1, 5, 7).unwrap();
+    assert_eq!(
+        (p1.clone() + p1).unwrap(),
+        CurvePoint::new(18, 77, 5, 7).unwrap()
+    );
 }
