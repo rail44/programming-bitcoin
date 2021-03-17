@@ -110,17 +110,17 @@ fn test_mul() {
 fn test_pow() {
     let a = FieldElement::new(9, 19);
     let b = FieldElement::new(7, 19);
-    assert_eq!(FieldElement::pow(a, 12), b);
+    assert_eq!(FieldElement::pow(&a, 12), b);
 
     let a = FieldElement::new(9, 19);
     let b = FieldElement::new(1, 19);
-    assert_eq!(FieldElement::pow(a, 18), b);
+    assert_eq!(FieldElement::pow(&a, 18), b);
 }
 
 #[test]
 fn test_neg_pow() {
     let a = FieldElement::new(7, 13);
-    assert_eq!(FieldElement::pow(a.clone(), -3), FieldElement::pow(a, 9));
+    assert_eq!(FieldElement::pow(&a, -3), FieldElement::pow(&a, 9));
 }
 
 #[test]
