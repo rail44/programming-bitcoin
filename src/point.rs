@@ -27,38 +27,48 @@ impl Point {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct CurvePoint {
+struct Curve {
     a: i64,
     b: i64,
-    p: Point,
 }
 
-impl CurvePoint {
-    fn new(x: i64, y: i64, a: i64, b: i64) -> Result<CurvePoint> {
-        if y.pow(2) != x.pow(3) + a * x + b {
+impl Curve {
+    fn new(a: i64, b: i64) -> Curve {
+        Curve {
+            a,
+            b,
+        }
+    }
+
+    fn point<'a>(&'a self, x: i64, y: i64) -> Result<CurvePoint<'a>> {
+        if y.pow(2) != x.pow(3) + self.a * x + self.b {
             return Err(anyhow!("({}, {}) is not on the curve", x, y));
         }
         Ok(CurvePoint {
-            a,
-            b,
+            c: self,
             p: Point::new(x, y),
         })
     }
 
-    fn inf(a: i64, b: i64) -> CurvePoint {
+    fn inf<'a>(&'a self) -> CurvePoint<'a> {
         CurvePoint {
-            a,
-            b,
+            c: self,
             p: Point::Inf,
         }
     }
 }
 
-impl ops::Add<CurvePoint> for CurvePoint {
-    type Output = Result<CurvePoint>;
+#[derive(Debug, PartialEq, Clone)]
+struct CurvePoint<'a> {
+    c: &'a Curve,
+    p: Point,
+}
 
-    fn add(self, other: CurvePoint) -> Result<CurvePoint> {
-        if self.a != other.a || self.b != other.b {
+impl<'a> ops::Add<CurvePoint<'a>> for CurvePoint<'a> {
+    type Output = Result<CurvePoint<'a>>;
+
+    fn add(self, other: CurvePoint<'a>) -> Result<CurvePoint<'a>> {
+        if self.c != other.c {
             return Err(anyhow!(
                 "Points {:?}, {:?} are not on the same curve",
                 self,
@@ -81,45 +91,48 @@ impl ops::Add<CurvePoint> for CurvePoint {
             let s = (other_p.y - self_p.y) / (other_p.x - self_p.x);
             let x = s.pow(2) - self_p.x - other_p.x;
             let y = s * (self_p.x - x) - self_p.y;
-            return CurvePoint::new(x, y, self.a, self.b);
+            return self.c.point(x, y);
         }
 
         if self_p.y != other_p.y {
-            return Ok(CurvePoint::inf(self.a, self.b));
+            return Ok(self.c.inf());
         }
 
         if self_p.y == 0 {
-            return Ok(CurvePoint::inf(self.a, self.b));
+            return Ok(self.c.inf());
         }
 
-        let s = (3 * self_p.x.pow(2) + self.a) / (2 * self_p.y);
+        let s = (3 * self_p.x.pow(2) + self.c.a) / (2 * self_p.y);
         let x = s.pow(2) - 2 * self_p.x;
         let y = s * (self_p.x - x) - self_p.y;
-        CurvePoint::new(x, y, self.a, self.b)
+        self.c.point(x, y)
     }
 }
 
 #[test]
 fn test_new() {
-    let p1 = CurvePoint::new(-1, -1, 5, 7);
+    let c = Curve::new(5, 7);
+    let p1 = c.point(-1, -1);
     assert!(p1.is_ok());
 
-    let p2 = CurvePoint::new(-1, -2, 5, 7);
+    let p2 = c.point(-1, -2);
     assert!(p2.is_err());
 }
 
 #[test]
 fn test_add_1() {
-    let p1 = CurvePoint::new(2, 5, 5, 7).unwrap();
-    let p2 = CurvePoint::new(-1, -1, 5, 7).unwrap();
-    assert_eq!((p1 + p2).unwrap(), CurvePoint::new(3, -7, 5, 7).unwrap());
+    let c = Curve::new(5, 7);
+    let p1 = c.point(2, 5).unwrap();
+    let p2 = c.point(-1, -1).unwrap();
+    assert_eq!((p1 + p2).unwrap(), c.point(3, -7).unwrap());
 }
 
 #[test]
 fn test_add_2() {
-    let p1 = CurvePoint::new(-1, -1, 5, 7).unwrap();
+    let c = Curve::new(5, 7);
+    let p1 = c.point(-1, -1).unwrap();
     assert_eq!(
         (p1.clone() + p1).unwrap(),
-        CurvePoint::new(18, 77, 5, 7).unwrap()
+        c.point(18, 77).unwrap()
     );
 }
