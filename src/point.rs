@@ -34,10 +34,7 @@ struct Curve {
 
 impl Curve {
     fn new(a: i64, b: i64) -> Curve {
-        Curve {
-            a,
-            b,
-        }
+        Curve { a, b }
     }
 
     fn point<'a>(&'a self, x: i64, y: i64) -> Result<CurvePoint<'a>> {
@@ -131,8 +128,5 @@ fn test_add_1() {
 fn test_add_2() {
     let c = Curve::new(5, 7);
     let p1 = c.point(-1, -1).unwrap();
-    assert_eq!(
-        (p1.clone() + p1).unwrap(),
-        c.point(18, 77).unwrap()
-    );
+    assert_eq!((p1.clone() + p1).unwrap(), c.point(18, 77).unwrap());
 }
