@@ -18,7 +18,7 @@ impl Point {
         Point::Actual(ActualPoint { x, y })
     }
 
-    fn into_normal_point(self) -> ActualPoint {
+    fn into_actual(self) -> ActualPoint {
         if let Point::Actual(p) = self {
             return p;
         }
@@ -84,8 +84,8 @@ impl<'a> ops::Add<CurvePoint<'a>> for CurvePoint<'a> {
             return Ok(self);
         }
 
-        let self_p = self.p.into_normal_point();
-        let other_p = other.p.into_normal_point();
+        let self_p = self.p.into_actual();
+        let other_p = other.p.into_actual();
 
         if self_p.x != other_p.x {
             let s = (other_p.y - self_p.y) / (other_p.x - self_p.x);
