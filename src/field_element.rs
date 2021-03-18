@@ -5,7 +5,7 @@ use std::convert::{From, Into};
 use std::ops;
 
 #[derive(Debug, PartialEq, Clone)]
-struct FieldElement {
+pub struct FieldElement {
     prime: BigInt,
     num: BigInt,
 }
@@ -21,7 +21,7 @@ where
 }
 
 impl FieldElement {
-    fn new<N, P>(num: N, prime: P) -> FieldElement
+    pub fn new<N, P>(num: N, prime: P) -> FieldElement
     where
         N: Into<BigInt>,
         P: Into<BigInt>,

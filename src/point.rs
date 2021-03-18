@@ -27,17 +27,17 @@ impl Point {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct Curve {
+pub struct Curve {
     a: i64,
     b: i64,
 }
 
 impl Curve {
-    fn new(a: i64, b: i64) -> Curve {
+    pub fn new(a: i64, b: i64) -> Curve {
         Curve { a, b }
     }
 
-    fn point<'a>(&'a self, x: i64, y: i64) -> Result<CurvePoint<'a>> {
+    pub fn point<'a>(&'a self, x: i64, y: i64) -> Result<CurvePoint<'a>> {
         if y.pow(2) != x.pow(3) + self.a * x + self.b {
             return Err(anyhow!("({}, {}) is not on the curve", x, y));
         }
@@ -47,7 +47,7 @@ impl Curve {
         })
     }
 
-    fn inf<'a>(&'a self) -> CurvePoint<'a> {
+    pub fn inf<'a>(&'a self) -> CurvePoint<'a> {
         CurvePoint {
             c: self,
             p: Point::Inf,
@@ -56,7 +56,7 @@ impl Curve {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct CurvePoint<'a> {
+pub struct CurvePoint<'a> {
     c: &'a Curve,
     p: Point,
 }
