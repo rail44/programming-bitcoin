@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use num::traits::{Pow, Zero};
 use num_bigint::BigInt;
 
 use std::convert::{From, Into};
@@ -10,14 +11,8 @@ pub struct FieldElement {
     num: BigInt,
 }
 
-fn modulo<A, B>(a: A, b: B) -> BigInt
-where
-    A: Into<BigInt>,
-    B: Into<BigInt>,
-{
-    let a: BigInt = a.into();
-    let b: BigInt = b.into();
-    (a % b.clone() + b.clone()) % b
+fn modulo(a: &'_ BigInt, b: &'_ BigInt) -> BigInt {
+    (a % b + b) % b
 }
 
 impl FieldElement {
@@ -32,72 +27,78 @@ impl FieldElement {
         }
     }
 
-    fn round<N: Into<BigInt>>(&self, num: N) -> FieldElement {
-        let num = modulo(num, self.prime.clone());
+    fn round(&self, num: &'_ BigInt) -> FieldElement {
+        let num = modulo(&num, &self.prime);
         FieldElement::new(num, self.prime.clone())
     }
 
-    fn pow<N: Into<BigInt>>(self, exponent: N) -> FieldElement {
-        let n = modulo(exponent, self.prime.clone() - 1);
-        let num = self
-            .num
-            .modpow(&BigInt::from(n), &BigInt::from(self.prime.clone()));
-        FieldElement {
-            num,
-            prime: self.prime,
-        }
+    pub fn is_zero(&self) -> bool {
+        self.num.is_zero()
     }
 }
 
-impl ops::Add<FieldElement> for FieldElement {
+impl<'a, 'b> ops::Add<&'b FieldElement> for &'a FieldElement {
     type Output = Result<FieldElement>;
 
-    fn add(self, other: FieldElement) -> Result<FieldElement> {
+    fn add(self, other: &'b FieldElement) -> Result<FieldElement> {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot add two numbers in deffirent Fields"));
         }
-        Ok(self.round(self.num.clone() + other.num))
+        Ok(self.round(&(&self.num + &other.num)))
     }
 }
 
-impl ops::Sub<FieldElement> for FieldElement {
+impl<'a, 'b> ops::Sub<&'b FieldElement> for &'a FieldElement {
     type Output = Result<FieldElement>;
 
-    fn sub(self, other: FieldElement) -> Result<FieldElement> {
+    fn sub(self, other: &'b FieldElement) -> Result<FieldElement> {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot sub two numbers in deffirent Fields"));
         }
-        Ok(self.round(self.num.clone() - other.num))
+        Ok(self.round(&(&self.num - &other.num)))
     }
 }
 
-impl ops::Mul<FieldElement> for FieldElement {
+impl<'a, 'b> ops::Mul<&'b FieldElement> for &'a FieldElement {
     type Output = Result<FieldElement>;
 
-    fn mul(self, other: FieldElement) -> Result<FieldElement> {
+    fn mul(self, other: &'b FieldElement) -> Result<FieldElement> {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot mul two numbers in deffirent Fields"));
         }
-        Ok(self.round(self.num.clone() * other.num))
+        Ok(self.round(&(&self.num * &other.num)))
     }
 }
 
-impl ops::Mul<u64> for FieldElement {
+impl<'a, 'b> ops::Mul<&'b BigInt> for &'a FieldElement {
     type Output = Result<FieldElement>;
 
-    fn mul(self, other: u64) -> Result<FieldElement> {
-        Ok(self.round(self.num.clone() * other))
+    fn mul(self, other: &'b BigInt) -> Result<FieldElement> {
+        Ok(self.round(&(&self.num * other)))
     }
 }
 
-impl ops::Div<FieldElement> for FieldElement {
+impl<'a, 'b> ops::Div<&'b FieldElement> for &'a FieldElement {
     type Output = Result<FieldElement>;
 
-    fn div(self, other: FieldElement) -> Result<FieldElement> {
+    fn div(self, other: &'b FieldElement) -> Result<FieldElement> {
         if self.prime != other.prime {
             return Err(anyhow!("Cannot div two numbers in deffirent Fields"));
         }
-        self.clone() * (other.pow(self.prime - BigInt::from(2)))
+        self * &other.pow(&(&self.prime - BigInt::from(2)))
+    }
+}
+
+impl<'a, 'b> Pow<&'b BigInt> for &'a FieldElement {
+    type Output = FieldElement;
+
+    fn pow(self, exponent: &'b BigInt) -> FieldElement {
+        let n = modulo(exponent, &(&self.prime - BigInt::from(1)));
+        let num = self.num.modpow(&n, &self.prime);
+        FieldElement {
+            num,
+            prime: self.prime.clone(),
+        }
     }
 }
 
@@ -106,7 +107,7 @@ fn test_add() {
     let a = FieldElement::new(7, 13);
     let b = FieldElement::new(12, 13);
     let c = FieldElement::new(6, 13);
-    assert_eq!((a + b).unwrap(), c);
+    assert_eq!((&a + &b).unwrap(), c);
 }
 
 #[test]
@@ -114,7 +115,7 @@ fn test_sub() {
     let a = FieldElement::new(6, 19);
     let b = FieldElement::new(13, 19);
     let c = FieldElement::new(12, 19);
-    assert_eq!((a - b).unwrap(), c);
+    assert_eq!((&a - &b).unwrap(), c);
 }
 
 #[test]
@@ -122,24 +123,24 @@ fn test_mul() {
     let a = FieldElement::new(6, 19);
     let b = FieldElement::new(13, 19);
     let c = FieldElement::new(2, 19);
-    assert_eq!((a * b).unwrap(), c);
+    assert_eq!((&a * &b).unwrap(), c);
 }
 
 #[test]
 fn test_pow() {
     let a = FieldElement::new(9, 19);
     let b = FieldElement::new(7, 19);
-    assert_eq!(FieldElement::pow(a, 12), b);
+    assert_eq!(a.pow(&BigInt::from(12)), b);
 
     let a = FieldElement::new(9, 19);
     let b = FieldElement::new(1, 19);
-    assert_eq!(FieldElement::pow(a, 18), b);
+    assert_eq!(a.pow(&BigInt::from(18)), b);
 }
 
 #[test]
 fn test_neg_pow() {
     let a = FieldElement::new(7, 13);
-    assert_eq!(FieldElement::pow(a.clone(), -3), FieldElement::pow(a, 9));
+    assert_eq!(a.pow(&BigInt::from(-3)), a.pow(&BigInt::from(9)));
 }
 
 #[test]
@@ -147,5 +148,5 @@ fn test_div() {
     let a = FieldElement::new(2, 19);
     let b = FieldElement::new(7, 19);
     let c = FieldElement::new(3, 19);
-    assert_eq!((a / b).unwrap(), c);
+    assert_eq!((&a / &b).unwrap(), c);
 }
