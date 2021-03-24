@@ -11,7 +11,7 @@ fn main() {
 // fn test_add_field_element() {
 //     use field_element::FieldElement;
 //     use point::Curve;
-// 
+//
 //     let a = FieldElement::new(0, 223);
 //     let b = FieldElement::new(7, 223);
 //     let x = FieldElement::new(192, 223);

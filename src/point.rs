@@ -135,7 +135,8 @@ where
             return Ok(self.c.inf());
         }
 
-        let s = (self_p.x.pow(2_u8.into()) * BigInt::from(3) + &self.c.a) / (&self_p.y * BigInt::from(2));
+        let s = (self_p.x.pow(2_u8.into()) * BigInt::from(3) + &self.c.a)
+            / (&self_p.y * BigInt::from(2));
         let x = s.pow(2_u8.into()) - &self_p.x * BigInt::from(2);
         let y = s * (self_p.x - x.clone()) - self_p.y;
         self.c.point(x, y)
@@ -164,5 +165,8 @@ fn test_add_1() {
 fn test_add_2() {
     let c = Curve::<BigInt>::new(5.into(), 7.into());
     let p1 = c.point((-1).into(), (-1).into()).unwrap();
-    assert_eq!((p1.clone() + p1).unwrap(), c.point(18.into(), 77.into()).unwrap());
+    assert_eq!(
+        (p1.clone() + p1).unwrap(),
+        c.point(18.into(), 77.into()).unwrap()
+    );
 }
