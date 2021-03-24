@@ -82,6 +82,14 @@ impl ops::Mul<FieldElement> for FieldElement {
     }
 }
 
+impl ops::Mul<u64> for FieldElement {
+    type Output = Result<FieldElement>;
+
+    fn mul(self, other: u64) -> Result<FieldElement> {
+        Ok(self.round(self.num.clone() * other))
+    }
+}
+
 impl ops::Div<FieldElement> for FieldElement {
     type Output = Result<FieldElement>;
 
