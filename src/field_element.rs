@@ -5,6 +5,8 @@ use num_bigint::BigInt;
 use std::convert::{From, Into};
 use std::ops;
 
+use crate::point::Curve;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Prime(BigInt);
 
@@ -24,6 +26,14 @@ impl Prime {
             num: num.into(),
             prime: self,
         }
+    }
+
+    pub fn curve<A, B>(&self, a: A, b: B) -> Curve<'_>
+    where
+        A: Into<BigInt>,
+        B: Into<BigInt>,
+    {
+        Curve::new(self.field_element(a), self.field_element(b))
     }
 }
 

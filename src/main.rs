@@ -10,12 +10,9 @@ fn main() {
 #[test]
 fn test_add_field_element() {
     use field_element::Prime;
-    use point::Curve;
 
     let prime = Prime::new(223);
-    let a = prime.field_element(0);
-    let b = prime.field_element(7);
-    let c = Curve::new(a, b);
+    let c = prime.curve(0, 7);
 
     let x1 = prime.field_element(192);
     let y1 = prime.field_element(105);
@@ -35,12 +32,10 @@ fn test_add_field_element() {
 #[test]
 fn test_exam_3_4() {
     use field_element::Prime;
-    use point::{Curve, Point};
+    use point::Point;
 
     let prime = Prime::new(223);
-    let a = prime.field_element(0);
-    let b = prime.field_element(7);
-    let c = Curve::new(a, b);
+    let c = prime.curve(0, 7);
 
     // 1
     let x1 = prime.field_element(192);
@@ -126,12 +121,10 @@ fn test_exam_3_4() {
 #[test]
 fn test_exam_3_5() {
     use field_element::Prime;
-    use point::{Curve, Point};
+    use point::Point;
 
     let prime = Prime::new(223);
-    let a = prime.field_element(0);
-    let b = prime.field_element(7);
-    let c = Curve::new(a, b);
+    let c = prime.curve(0, 7);
 
     let x1 = prime.field_element(15);
     let y1 = prime.field_element(86);
