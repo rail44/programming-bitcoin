@@ -93,3 +93,27 @@ fn test_exam_3_5() {
     }
     assert_eq!(i, 7);
 }
+
+#[test]
+fn test_mul() {
+    use field_element::Prime;
+    use point::Point;
+    use num_bigint::BigInt;
+
+    let prime = Prime::new(223);
+    let c = prime.curve(0, 7);
+    let p1 = c.point(47, 71).unwrap();
+
+    let r1 = (BigInt::from(4) * p1).unwrap();
+    assert_eq!(r1, c.point(194, 51).unwrap());
+
+    let p1 = c.point(47, 71).unwrap();
+
+    let r1 = (BigInt::from(8) * p1).unwrap();
+    assert_eq!(r1, c.point(116, 55).unwrap());
+
+    let p1 = c.point(47, 71).unwrap();
+
+    let r1 = (BigInt::from(21) * p1).unwrap();
+    assert_eq!(&r1.p, &Point::Inf);
+}

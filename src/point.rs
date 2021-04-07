@@ -73,7 +73,7 @@ impl<'a> Curve<'a> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CurvePoint<'a> {
-    c: &'a Curve<'a>,
+    pub c: &'a Curve<'a>,
     pub p: Point<'a>,
 }
 
@@ -115,11 +115,30 @@ impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
             return Ok(self.c.inf());
         }
 
-        let s = (&(&(&self_p.x.pow(&2.into()) * &BigInt::from(3))? + &self.c.a)?
-            / &(&self_p.y * &BigInt::from(2))?)?;
-        let x = (&s.pow(&2.into()) - &(&self_p.x * &BigInt::from(2))?)?;
+        let s = (&(&(&BigInt::from(3) * &self_p.x.pow(&2.into()))? + &self.c.a)?
+            / &(&BigInt::from(2) * &self_p.y)?)?;
+        let x = (&s.pow(&2.into()) - &(&BigInt::from(2) * &self_p.x)?)?;
         let y = (&(&s * &(&self_p.x - &x)?)? - &self_p.y)?;
         self.c.point_from_field_element(x, y)
+    }
+}
+
+impl<'a > ops::Mul<CurvePoint<'a>> for BigInt {
+    type Output = Result<CurvePoint<'a>>;
+
+    fn mul(self, other: CurvePoint<'a>) -> Result<CurvePoint<'a>> {
+        let mut coef = self;
+        let mut current = other.clone();
+        let mut result = other.c.inf();
+        let zero: BigInt = 0.into();
+        while &coef != &zero {
+            if &coef & &1.into() != zero {
+                result = (&result + &current)?;
+            }
+            current = (&current + &current)?;
+            coef >>= 1;
+        }
+        return Ok(result);
     }
 }
 

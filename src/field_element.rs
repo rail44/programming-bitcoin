@@ -97,11 +97,11 @@ impl<'a, 'b, 'c> ops::Mul<&'b FieldElement<'c>> for &'a FieldElement<'c> {
     }
 }
 
-impl<'a, 'b, 'c> ops::Mul<&'b BigInt> for &'a FieldElement<'c> {
+impl<'a, 'b, 'c> ops::Mul<&'b FieldElement<'c>> for &'a BigInt {
     type Output = Result<FieldElement<'c>>;
 
-    fn mul(self, other: &'b BigInt) -> Result<FieldElement<'c>> {
-        Ok(self.round(&(&self.num * other)))
+    fn mul(self, other: &'b FieldElement<'c>) -> Result<FieldElement<'c>> {
+        Ok(other.round(&(self * &other.num)))
     }
 }
 
