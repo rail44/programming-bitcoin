@@ -6,13 +6,13 @@ use std::ops;
 use crate::field_element::FieldElement;
 
 #[derive(Debug, PartialEq, Clone)]
-struct ActualPoint {
-    x: FieldElement,
-    y: FieldElement,
+pub struct ActualPoint {
+    pub x: FieldElement,
+    pub y: FieldElement,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Point {
+pub enum Point {
     Inf,
     Actual(ActualPoint),
 }
@@ -22,7 +22,7 @@ impl Point {
         Point::Actual(ActualPoint { x, y })
     }
 
-    fn into_actual(self) -> ActualPoint {
+    pub fn as_actual(&self) -> &ActualPoint {
         if let Point::Actual(p) = self {
             return p;
         }
@@ -62,13 +62,13 @@ impl Curve {
 #[derive(Debug, PartialEq, Clone)]
 pub struct CurvePoint<'a> {
     c: &'a Curve,
-    p: Point,
+    pub p: Point,
 }
 
-impl<'a> ops::Add<CurvePoint<'a>> for CurvePoint<'a> {
+impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
     type Output = Result<CurvePoint<'a>>;
 
-    fn add(self, other: CurvePoint<'a>) -> Result<CurvePoint<'a>> {
+    fn add(self, other: &'c CurvePoint<'a>) -> Result<CurvePoint<'a>> {
         if self.c != other.c {
             return Err(anyhow!(
                 "Points {:?}, {:?} are not on the same curve",
@@ -78,15 +78,15 @@ impl<'a> ops::Add<CurvePoint<'a>> for CurvePoint<'a> {
         }
 
         if self.p == Point::Inf {
-            return Ok(other);
+            return Ok(other.clone());
         }
 
         if other.p == Point::Inf {
-            return Ok(self);
+            return Ok(self.clone());
         }
 
-        let self_p = self.p.into_actual();
-        let other_p = other.p.into_actual();
+        let self_p = self.p.as_actual();
+        let other_p = other.p.as_actual();
 
         if self_p.x != other_p.x {
             let s = (&(&other_p.y - &self_p.y)? / &(&other_p.x - &self_p.x)?)?;
