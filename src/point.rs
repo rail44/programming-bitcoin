@@ -6,23 +6,23 @@ use std::ops;
 use crate::field_element::FieldElement;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ActualPoint {
-    pub x: FieldElement,
-    pub y: FieldElement,
+pub struct ActualPoint<'a> {
+    pub x: FieldElement<'a>,
+    pub y: FieldElement<'a>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Point {
+pub enum Point<'a> {
     Inf,
-    Actual(ActualPoint),
+    Actual(ActualPoint<'a>),
 }
 
-impl Point {
-    fn new(x: FieldElement, y: FieldElement) -> Point {
+impl<'a> Point<'a> {
+    fn new(x: FieldElement<'a>, y: FieldElement<'a>) -> Point<'a> {
         Point::Actual(ActualPoint { x, y })
     }
 
-    pub fn as_actual(&self) -> &ActualPoint {
+    pub fn as_actual(&self) -> &ActualPoint<'a> {
         if let Point::Actual(p) = self {
             return p;
         }
@@ -31,17 +31,17 @@ impl Point {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Curve {
-    a: FieldElement,
-    b: FieldElement,
+pub struct Curve<'a> {
+    a: FieldElement<'a>,
+    b: FieldElement<'a>,
 }
 
-impl Curve {
-    pub fn new(a: FieldElement, b: FieldElement) -> Curve {
+impl<'a> Curve<'a> {
+    pub fn new(a: FieldElement<'a>, b: FieldElement<'a>) -> Curve<'a> {
         Curve { a, b }
     }
 
-    pub fn point(&'_ self, x: FieldElement, y: FieldElement) -> Result<CurvePoint<'_>> {
+    pub fn point(&'a self, x: FieldElement<'a>, y: FieldElement<'a>) -> Result<CurvePoint<'a>> {
         if y.pow(&2.into()) != (&(&x.pow(&3.into()) + &(&self.a * &x)?)? + &self.b)? {
             return Err(anyhow!("({:?}, {:?}) is not on the curve", x, y));
         }
@@ -61,8 +61,8 @@ impl Curve {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CurvePoint<'a> {
-    c: &'a Curve,
-    pub p: Point,
+    c: &'a Curve<'a>,
+    pub p: Point<'a>,
 }
 
 impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
