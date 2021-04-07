@@ -14,19 +14,9 @@ fn test_add_field_element() {
     let prime = Prime::new(223);
     let c = prime.curve(0, 7);
 
-    let x1 = prime.field_element(192);
-    let y1 = prime.field_element(105);
-
-    let x2 = prime.field_element(17);
-    let y2 = prime.field_element(56);
-
-    let p1 = c.point(x1, y1).unwrap();
-    let p2 = c.point(x2, y2).unwrap();
-    assert_eq!(
-        (&p1 + &p2).unwrap(),
-        c.point(prime.field_element(170), prime.field_element(142))
-            .unwrap()
-    );
+    let p1 = c.point(192, 105).unwrap();
+    let p2 = c.point(17, 56).unwrap();
+    assert_eq!((&p1 + &p2).unwrap(), c.point(170, 142).unwrap());
 }
 
 #[test]
@@ -38,60 +28,33 @@ fn test_exam_3_4() {
     let c = prime.curve(0, 7);
 
     // 1
-    let x1 = prime.field_element(192);
-    let y1 = prime.field_element(105);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(192, 105).unwrap();
 
     let r1 = (&p1 + &p1).unwrap();
-    assert_eq!(
-        (&r1.p.as_actual().x, &r1.p.as_actual().y),
-        (&prime.field_element(49), &prime.field_element(71))
-    );
+    assert_eq!(r1, c.point(49, 71).unwrap());
 
     // 2
-    let x1 = prime.field_element(143);
-    let y1 = prime.field_element(98);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(143, 98).unwrap();
 
     let r1 = (&p1 + &p1).unwrap();
-    assert_eq!(
-        (&r1.p.as_actual().x, &r1.p.as_actual().y),
-        (&prime.field_element(64), &prime.field_element(168))
-    );
+    assert_eq!(r1, c.point(64, 168).unwrap());
 
     // 3
-    let x1 = prime.field_element(47);
-    let y1 = prime.field_element(71);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(47, 71).unwrap();
 
     let r1 = (&p1 + &p1).unwrap();
-    assert_eq!(
-        (&r1.p.as_actual().x, &r1.p.as_actual().y),
-        (&prime.field_element(36), &prime.field_element(111))
-    );
+    assert_eq!(r1, c.point(36, 111).unwrap());
 
     // 4
-    let x1 = prime.field_element(47);
-    let y1 = prime.field_element(71);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(47, 71).unwrap();
 
     let mut r1 = (&p1 + &p1).unwrap();
     r1 = (&r1 + &p1).unwrap();
     r1 = (&r1 + &p1).unwrap();
-    assert_eq!(
-        (&r1.p.as_actual().x, &r1.p.as_actual().y),
-        (&prime.field_element(194), &prime.field_element(51))
-    );
+    assert_eq!(r1, c.point(194, 51).unwrap());
 
     // 5
-    let x1 = prime.field_element(47);
-    let y1 = prime.field_element(71);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(47, 71).unwrap();
 
     let mut r1 = (&p1 + &p1).unwrap();
     r1 = (&r1 + &p1).unwrap();
@@ -100,16 +63,10 @@ fn test_exam_3_4() {
     r1 = (&r1 + &p1).unwrap();
     r1 = (&r1 + &p1).unwrap();
     r1 = (&r1 + &p1).unwrap();
-    assert_eq!(
-        (&r1.p.as_actual().x, &r1.p.as_actual().y),
-        (&prime.field_element(116), &prime.field_element(55))
-    );
+    assert_eq!(r1, c.point(116, 55).unwrap());
 
     // 6
-    let x1 = prime.field_element(47);
-    let y1 = prime.field_element(71);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(47, 71).unwrap();
 
     let mut r1 = c.inf();
     for _ in 0..21 {
@@ -126,10 +83,7 @@ fn test_exam_3_5() {
     let prime = Prime::new(223);
     let c = prime.curve(0, 7);
 
-    let x1 = prime.field_element(15);
-    let y1 = prime.field_element(86);
-
-    let p1 = c.point(x1, y1).unwrap();
+    let p1 = c.point(15, 86).unwrap();
 
     let mut r1 = p1.clone();
     let mut i = 1;

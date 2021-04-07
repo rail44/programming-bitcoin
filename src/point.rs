@@ -41,7 +41,11 @@ impl<'a> Curve<'a> {
         Curve { a, b }
     }
 
-    pub fn point(&'a self, x: FieldElement<'a>, y: FieldElement<'a>) -> Result<CurvePoint<'a>> {
+    pub fn point_from_field_element(
+        &'a self,
+        x: FieldElement<'a>,
+        y: FieldElement<'a>,
+    ) -> Result<CurvePoint<'a>> {
         if y.pow(&2.into()) != (&(&x.pow(&3.into()) + &(&self.a * &x)?)? + &self.b)? {
             return Err(anyhow!("({:?}, {:?}) is not on the curve", x, y));
         }
@@ -49,6 +53,14 @@ impl<'a> Curve<'a> {
             c: self,
             p: Point::new(x, y),
         })
+    }
+
+    pub fn point<A, B>(&'a self, x: A, y: B) -> Result<CurvePoint<'a>>
+    where
+        A: Into<BigInt>,
+        B: Into<BigInt>,
+    {
+        self.point_from_field_element(self.a.prime.field_element(x), self.a.prime.field_element(y))
     }
 
     pub fn inf(&'_ self) -> CurvePoint<'_> {
@@ -92,7 +104,7 @@ impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
             let s = (&(&other_p.y - &self_p.y)? / &(&other_p.x - &self_p.x)?)?;
             let x = (&(&s.pow(&2.into()) - &self_p.x)? - &other_p.x)?;
             let y = (&(&s * &(&self_p.x - &x)?)? - &self_p.y)?;
-            return self.c.point(x, y);
+            return self.c.point_from_field_element(x, y);
         }
 
         if self_p.y != other_p.y {
@@ -107,7 +119,7 @@ impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
             / &(&self_p.y * &BigInt::from(2))?)?;
         let x = (&s.pow(&2.into()) - &(&self_p.x * &BigInt::from(2))?)?;
         let y = (&(&s * &(&self_p.x - &x)?)? - &self_p.y)?;
-        self.c.point(x, y)
+        self.c.point_from_field_element(x, y)
     }
 }
 
