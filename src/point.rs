@@ -123,7 +123,7 @@ impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
     }
 }
 
-impl<'a > ops::Mul<CurvePoint<'a>> for BigInt {
+impl<'a> ops::Mul<CurvePoint<'a>> for BigInt {
     type Output = Result<CurvePoint<'a>>;
 
     fn mul(self, other: CurvePoint<'a>) -> Result<CurvePoint<'a>> {
@@ -131,14 +131,14 @@ impl<'a > ops::Mul<CurvePoint<'a>> for BigInt {
         let mut current = other.clone();
         let mut result = other.c.inf();
         let zero: BigInt = 0.into();
-        while &coef != &zero {
+        while coef != zero {
             if &coef & &1.into() != zero {
                 result = (&result + &current)?;
             }
             current = (&current + &current)?;
             coef >>= 1;
         }
-        return Ok(result);
+        Ok(result)
     }
 }
 

@@ -2,6 +2,7 @@
 
 mod field_element;
 mod point;
+mod s256;
 
 fn main() {
     println!("Hello, world!");
@@ -97,8 +98,8 @@ fn test_exam_3_5() {
 #[test]
 fn test_mul() {
     use field_element::Prime;
-    use point::Point;
     use num_bigint::BigInt;
+    use point::Point;
 
     let prime = Prime::new(223);
     let c = prime.curve(0, 7);
@@ -116,4 +117,22 @@ fn test_mul() {
 
     let r1 = (BigInt::from(21) * p1).unwrap();
     assert_eq!(&r1.p, &Point::Inf);
+}
+
+#[test]
+fn test_3_9_1() {
+    use num_bigint::BigInt;
+    use num_traits::Pow;
+    let gx = BigInt::parse_bytes(
+        b"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        16,
+    )
+    .unwrap();
+    let gy = BigInt::parse_bytes(
+        b"483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
+        16,
+    )
+    .unwrap();
+    let p = BigInt::from(2).pow(256_u16) - BigInt::from(2).pow(32_u8) - 977;
+    assert_eq!(gy.pow(2_u8) % &p, (gx.pow(3_u8) + 7) % p);
 }
