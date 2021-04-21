@@ -28,6 +28,13 @@ impl<'a> Point<'a> {
         }
         panic!("not normal point");
     }
+
+    pub fn into_actual(self) -> ActualPoint<'a> {
+        if let Point::Actual(p) = self {
+            return p;
+        }
+        panic!("not normal point");
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

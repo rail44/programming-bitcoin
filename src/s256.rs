@@ -4,6 +4,7 @@ use anyhow::Result;
 use num_bigint::BigInt;
 use num_traits::Pow;
 use once_cell::sync::Lazy;
+use rand::seq::IteratorRandom;
 use std::ops;
 
 static P: Lazy<Prime> =
@@ -91,10 +92,35 @@ pub struct Signature {
 
 impl Signature {
     fn new(r: BigInt, s: BigInt) -> Self {
-        Self {
-            r,
-            s,
+        Self { r, s }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PrivateKey<'a> {
+    secret: BigInt,
+    point: S256Point<'a>,
+}
+
+impl<'a> PrivateKey<'a> {
+    fn new(secret: BigInt) -> Self {
+        let point = (secret.clone() * G.clone()).unwrap();
+        Self { secret, point }
+    }
+
+    pub fn sign(&self, z: BigInt) -> Signature {
+        let mut rng = rand::thread_rng();
+
+        let n = &*N;
+        let range = num_iter::range(BigInt::from(0), BigInt::from(n.clone()));
+        let k = range.choose(&mut rng).unwrap();
+        let r = (k.clone() * G.clone()).unwrap().cp.p.into_actual().x.num;
+        let k_inv = k.modpow(&(n - 2), &n);
+        let mut s = (z + &r * &self.secret) * k_inv % n;
+        if s > n / 2 {
+            s = n - s;
         }
+        Signature::new(r, s)
     }
 }
 
