@@ -46,7 +46,7 @@ impl AsRef<BigInt> for Prime {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldElement<'a> {
     pub prime: &'a Prime,
-    num: BigInt,
+    pub num: BigInt,
 }
 
 fn modulo(a: &'_ BigInt, b: &'_ BigInt) -> BigInt {

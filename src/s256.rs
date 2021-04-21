@@ -69,7 +69,7 @@ impl<'a> ops::Mul<S256Point<'a>> for BigInt {
     type Output = Result<S256Point<'a>>;
 
     fn mul(self, other: S256Point<'a>) -> Result<S256Point<'a>> {
-        let coef = self % N.clone();
+        let coef = self % &*N;
         coef.mul(other.cp).map(|cp| cp.into())
     }
 }
@@ -77,4 +77,47 @@ impl<'a> ops::Mul<S256Point<'a>> for BigInt {
 #[test]
 fn test_3_9() {
     assert_eq!((N.clone() * G.clone()).unwrap(), C.inf().into());
+}
+
+#[test]
+fn test_3_11_3() {
+    let z = BigInt::parse_bytes(
+        b"bc62d4b80d9e36da29c16c5d4d9f11731f36052c72401a76c23c0fb5a9b74423",
+        16,
+    )
+    .unwrap();
+    let r = BigInt::parse_bytes(
+        b"37206a0610995c58074999cb9767b87af4c4978db68c06e8e6e81d282047a7c6",
+        16,
+    )
+    .unwrap();
+    let s = BigInt::parse_bytes(
+        b"8ca63759c1157ebeaec0d03cecca119fc9a75bf8e6d0fa65c841c8e2738cdaec",
+        16,
+    )
+    .unwrap();
+    let px = BigInt::parse_bytes(
+        b"04519fac3d910ca7e7138f7013706f619fa8f033e6ec6e09370ea38cee6a7574",
+        16,
+    )
+    .unwrap();
+    let py = BigInt::parse_bytes(
+        b"82b51eab8c27c66e26c858a079bcdf4f1ada34cec420cafc7eac1a42216fb6c4",
+        16,
+    )
+    .unwrap();
+
+    let point = S256Point::new(px, py).unwrap();
+    let s_inv = s.modpow(&(&*N - 2), &*N);
+    let u = z * &s_inv % &*N;
+    let v = &r * s_inv % &*N;
+    assert_eq!(
+        (&*(u * G.clone()).unwrap() + &*(v * point).unwrap())
+            .unwrap()
+            .p
+            .as_actual()
+            .x
+            .num,
+        r
+    );
 }
