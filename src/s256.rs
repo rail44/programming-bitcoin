@@ -1,4 +1,4 @@
-use crate::field_element::Prime;
+use crate::field_element::{FieldElement, Prime};
 use crate::point::{Curve, CurvePoint};
 use anyhow::Result;
 use num_bigint::BigInt;
@@ -9,7 +9,8 @@ use std::ops;
 
 static P: Lazy<Prime> =
     Lazy::new(|| Prime::new(BigInt::from(2).pow(256_u16) - BigInt::from(2).pow(32_u8) - 977));
-static C: Lazy<Curve> = Lazy::new(|| P.curve(0, 7));
+static C: Lazy<Curve<S256Field>> =
+    Lazy::new(|| Curve::new(P.field_element(0).into(), P.field_element(7).into()));
 static N: Lazy<BigInt> = Lazy::new(|| {
     BigInt::parse_bytes(
         b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
@@ -34,8 +35,33 @@ static G: Lazy<S256Point> = Lazy::new(|| {
 });
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct S256Field<'a> {
+    pub inner: FieldElement<'a>,
+}
+
+impl<'a> ops::Deref for S256Field<'a> {
+    type Target = FieldElement<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<'a> AsRef<FieldElement<'a>> for S256Field<'a> {
+    fn as_ref(&self) -> &FieldElement<'a> {
+        &self.inner
+    }
+}
+
+impl<'a> From<FieldElement<'a>> for S256Field<'a> {
+    fn from(inner: FieldElement<'a>) -> S256Field<'a> {
+        Self { inner }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct S256Point<'a> {
-    pub cp: CurvePoint<'a>,
+    pub cp: CurvePoint<'a, S256Field<'a>>,
 }
 
 impl<'a> S256Point<'a> {
@@ -81,15 +107,15 @@ impl<'a> S256Point<'a> {
 }
 
 impl<'a> ops::Deref for S256Point<'a> {
-    type Target = CurvePoint<'a>;
+    type Target = CurvePoint<'a, S256Field<'a>>;
 
     fn deref(&self) -> &Self::Target {
         &self.cp
     }
 }
 
-impl<'a> From<CurvePoint<'a>> for S256Point<'a> {
-    fn from(cp: CurvePoint<'a>) -> S256Point<'a> {
+impl<'a> From<CurvePoint<'a, S256Field<'a>>> for S256Point<'a> {
+    fn from(cp: CurvePoint<'a, S256Field<'a>>) -> S256Point<'a> {
         Self { cp }
     }
 }
@@ -131,9 +157,16 @@ impl<'a> PrivateKey<'a> {
         let mut rng = rand::thread_rng();
 
         let n = &*N;
-        let range = num_iter::range(BigInt::from(0), BigInt::from(n.clone()));
+        let range = num_iter::range(BigInt::from(0), n.clone());
         let k = range.choose(&mut rng).unwrap();
-        let r = (k.clone() * G.clone()).unwrap().cp.p.into_actual().x.num;
+        let r = (k.clone() * G.clone())
+            .unwrap()
+            .cp
+            .p
+            .into_actual()
+            .x
+            .num
+            .clone();
         let k_inv = k.modpow(&(n - 2), &n);
         let mut s = (z + &r * &self.secret) * k_inv % n;
         if s > n / 2 {
@@ -236,6 +269,11 @@ fn test_exam_4_1() {
 fn test_exam_4_2() {
     let key = PrivateKey::new(BigInt::from(5001));
     assert_eq!(
-        key.point.sec(true).iter().map(|n| format!("{:02x}", n)).collect::<String>(),
-        "0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1".to_string());
+        key.point
+            .sec(true)
+            .iter()
+            .map(|n| format!("{:02x}", n))
+            .collect::<String>(),
+        "0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1".to_string()
+    );
 }

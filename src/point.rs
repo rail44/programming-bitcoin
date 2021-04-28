@@ -1,35 +1,36 @@
 use anyhow::{anyhow, Result};
 use num::traits::Pow;
 use num_bigint::BigInt;
+use std::fmt::Debug;
 use std::ops;
 
 use crate::field_element::FieldElement;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ActualPoint<'a> {
-    pub x: FieldElement<'a>,
-    pub y: FieldElement<'a>,
+pub struct ActualPoint<F> {
+    pub x: F,
+    pub y: F,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Point<'a> {
+pub enum Point<F> {
     Inf,
-    Actual(ActualPoint<'a>),
+    Actual(ActualPoint<F>),
 }
 
-impl<'a> Point<'a> {
-    fn new(x: FieldElement<'a>, y: FieldElement<'a>) -> Point<'a> {
+impl<'a, F> Point<F> {
+    fn new(x: F, y: F) -> Point<F> {
         Point::Actual(ActualPoint { x, y })
     }
 
-    pub fn as_actual(&self) -> &ActualPoint<'a> {
+    pub fn as_actual(&self) -> &ActualPoint<F> {
         if let Point::Actual(p) = self {
             return p;
         }
         panic!("not normal point");
     }
 
-    pub fn into_actual(self) -> ActualPoint<'a> {
+    pub fn into_actual(self) -> ActualPoint<F> {
         if let Point::Actual(p) = self {
             return p;
         }
@@ -38,22 +39,24 @@ impl<'a> Point<'a> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Curve<'a> {
-    a: FieldElement<'a>,
-    b: FieldElement<'a>,
+pub struct Curve<F> {
+    a: F,
+    b: F,
 }
 
-impl<'a> Curve<'a> {
-    pub fn new(a: FieldElement<'a>, b: FieldElement<'a>) -> Curve<'a> {
+impl<'a, F> Curve<F>
+where
+    F: AsRef<FieldElement<'a>> + From<FieldElement<'a>> + Debug,
+{
+    pub fn new(a: F, b: F) -> Curve<F> {
         Curve { a, b }
     }
 
-    pub fn point_from_field_element(
-        &'a self,
-        x: FieldElement<'a>,
-        y: FieldElement<'a>,
-    ) -> Result<CurvePoint<'a>> {
-        if y.pow(&2.into()) != (&(&x.pow(&3.into()) + &(&self.a * &x)?)? + &self.b)? {
+    pub fn point_from_field_element(&self, x: F, y: F) -> Result<CurvePoint<F>> {
+        if y.as_ref().pow(&2.into())
+            != (&(&x.as_ref().pow(&3.into()) + &(self.a.as_ref() * x.as_ref())?)?
+                + self.b.as_ref())?
+        {
             return Err(anyhow!("({:?}, {:?}) is not on the curve", x, y));
         }
         Ok(CurvePoint {
@@ -62,15 +65,18 @@ impl<'a> Curve<'a> {
         })
     }
 
-    pub fn point<A, B>(&'a self, x: A, y: B) -> Result<CurvePoint<'a>>
+    pub fn point<A, B>(&self, x: A, y: B) -> Result<CurvePoint<F>>
     where
         A: Into<BigInt>,
         B: Into<BigInt>,
     {
-        self.point_from_field_element(self.a.prime.field_element(x), self.a.prime.field_element(y))
+        self.point_from_field_element(
+            self.a.as_ref().prime.field_element(x).into(),
+            self.a.as_ref().prime.field_element(y).into(),
+        )
     }
 
-    pub fn inf(&'_ self) -> CurvePoint<'_> {
+    pub fn inf(&self) -> CurvePoint<F> {
         CurvePoint {
             c: self,
             p: Point::Inf,
@@ -79,15 +85,18 @@ impl<'a> Curve<'a> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct CurvePoint<'a> {
-    pub c: &'a Curve<'a>,
-    pub p: Point<'a>,
+pub struct CurvePoint<'a, F> {
+    pub c: &'a Curve<F>,
+    pub p: Point<F>,
 }
 
-impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
-    type Output = Result<CurvePoint<'a>>;
+impl<'a, 'b, 'c, F> ops::Add<&'c CurvePoint<'a, F>> for &'b CurvePoint<'a, F>
+where
+    F: AsRef<FieldElement<'a>> + From<FieldElement<'a>> + Debug + PartialEq + Clone,
+{
+    type Output = Result<CurvePoint<'a, F>>;
 
-    fn add(self, other: &'c CurvePoint<'a>) -> Result<CurvePoint<'a>> {
+    fn add(self, other: &'c CurvePoint<'a, F>) -> Result<CurvePoint<'a, F>> {
         if self.c != other.c {
             return Err(anyhow!(
                 "Points {:?}, {:?} are not on the same curve",
@@ -108,32 +117,36 @@ impl<'a, 'b, 'c> ops::Add<&'c CurvePoint<'a>> for &'b CurvePoint<'a> {
         let other_p = other.p.as_actual();
 
         if self_p.x != other_p.x {
-            let s = (&(&other_p.y - &self_p.y)? / &(&other_p.x - &self_p.x)?)?;
-            let x = (&(&s.pow(&2.into()) - &self_p.x)? - &other_p.x)?;
-            let y = (&(&s * &(&self_p.x - &x)?)? - &self_p.y)?;
-            return self.c.point_from_field_element(x, y);
+            let s = (&(other_p.y.as_ref() - self_p.y.as_ref())?
+                / &(other_p.x.as_ref() - self_p.x.as_ref())?)?;
+            let x = (&(&s.pow(&2.into()) - self_p.x.as_ref())? - other_p.x.as_ref())?;
+            let y = (&(&s * &(self_p.x.as_ref() - &x)?)? - self_p.y.as_ref())?;
+            return self.c.point_from_field_element(x.into(), y.into());
         }
 
         if self_p.y != other_p.y {
             return Ok(self.c.inf());
         }
 
-        if self_p.y.is_zero() {
+        if self_p.y.as_ref().is_zero() {
             return Ok(self.c.inf());
         }
 
-        let s = (&(&(&BigInt::from(3) * &self_p.x.pow(&2.into()))? + &self.c.a)?
-            / &(&BigInt::from(2) * &self_p.y)?)?;
-        let x = (&s.pow(&2.into()) - &(&BigInt::from(2) * &self_p.x)?)?;
-        let y = (&(&s * &(&self_p.x - &x)?)? - &self_p.y)?;
-        self.c.point_from_field_element(x, y)
+        let s = (&(&(&BigInt::from(3) * &self_p.x.as_ref().pow(&2.into()))? + self.c.a.as_ref())?
+            / &(&BigInt::from(2) * self_p.y.as_ref())?)?;
+        let x = (&s.pow(&2.into()) - &(&BigInt::from(2) * self_p.x.as_ref())?)?;
+        let y = (&(&s * &(self_p.x.as_ref() - &x)?)? - self_p.y.as_ref())?;
+        self.c.point_from_field_element(x.into(), y.into())
     }
 }
 
-impl<'a> ops::Mul<CurvePoint<'a>> for BigInt {
-    type Output = Result<CurvePoint<'a>>;
+impl<'a, F> ops::Mul<CurvePoint<'a, F>> for BigInt
+where
+    F: AsRef<FieldElement<'a>> + From<FieldElement<'a>> + Debug + PartialEq + Clone,
+{
+    type Output = Result<CurvePoint<'a, F>>;
 
-    fn mul(self, other: CurvePoint<'a>) -> Result<CurvePoint<'a>> {
+    fn mul(self, other: CurvePoint<'a, F>) -> Result<CurvePoint<'a, F>> {
         let mut coef = self;
         let mut current = other.clone();
         let mut result = other.c.inf();

@@ -28,7 +28,7 @@ impl Prime {
         }
     }
 
-    pub fn curve<A, B>(&self, a: A, b: B) -> Curve<'_>
+    pub fn curve<'a, A, B>(&'a self, a: A, b: B) -> Curve<FieldElement<'a>>
     where
         A: Into<BigInt>,
         B: Into<BigInt>,
@@ -47,6 +47,12 @@ impl AsRef<BigInt> for Prime {
 pub struct FieldElement<'a> {
     pub prime: &'a Prime,
     pub num: BigInt,
+}
+
+impl<'a> AsRef<FieldElement<'a>> for FieldElement<'a> {
+    fn as_ref(&self) -> &FieldElement<'a> {
+        self
+    }
 }
 
 fn modulo(a: &'_ BigInt, b: &'_ BigInt) -> BigInt {
