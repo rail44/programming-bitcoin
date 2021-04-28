@@ -8,7 +8,7 @@ use std::ops;
 use crate::point::Curve;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Prime(BigInt);
+pub struct Prime(pub BigInt);
 
 impl Prime {
     pub fn new<N>(num: N) -> Self

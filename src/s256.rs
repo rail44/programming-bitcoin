@@ -1,16 +1,22 @@
 use crate::field_element::{FieldElement, Prime};
 use crate::point::{Curve, CurvePoint};
 use anyhow::Result;
-use num_bigint::BigInt;
+use num_bigint::{BigInt, Sign};
 use num_traits::Pow;
 use once_cell::sync::Lazy;
 use rand::seq::IteratorRandom;
 use std::ops;
 
+static A: Lazy<BigInt> = Lazy::new(|| BigInt::from(0));
+static B: Lazy<BigInt> = Lazy::new(|| BigInt::from(7));
 static P: Lazy<Prime> =
     Lazy::new(|| Prime::new(BigInt::from(2).pow(256_u16) - BigInt::from(2).pow(32_u8) - 977));
-static C: Lazy<Curve<S256Field>> =
-    Lazy::new(|| Curve::new(P.field_element(0).into(), P.field_element(7).into()));
+static C: Lazy<Curve<S256Field>> = Lazy::new(|| {
+    Curve::new(
+        P.field_element(A.clone()).into(),
+        P.field_element(B.clone()).into(),
+    )
+});
 static N: Lazy<BigInt> = Lazy::new(|| {
     BigInt::parse_bytes(
         b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
@@ -39,6 +45,16 @@ pub struct S256Field<'a> {
     pub inner: FieldElement<'a>,
 }
 
+impl<'a> S256Field<'a> {
+    fn new<N: Into<BigInt>>(n: N) -> Self {
+        P.field_element(n).into()
+    }
+
+    fn sqrt(&self) -> S256Field<'a> {
+        self.pow(&((&(*P).0 + 1) / 4)).into()
+    }
+}
+
 impl<'a> ops::Deref for S256Field<'a> {
     type Target = FieldElement<'a>;
 
@@ -65,6 +81,29 @@ pub struct S256Point<'a> {
 }
 
 impl<'a> S256Point<'a> {
+    pub fn parse(sec_bin: &[u8]) -> Result<S256Point<'a>> {
+        if sec_bin[0] == 4 {
+            let x = BigInt::from_bytes_be(Sign::Plus, &sec_bin[1..33]);
+            let y = BigInt::from_bytes_be(Sign::Plus, &sec_bin[33..65]);
+            return S256Point::new(x, y);
+        }
+        let is_even = sec_bin[0] == 2;
+        let x = S256Field::new(BigInt::from_bytes_be(Sign::Plus, &sec_bin[1..]));
+        let alpha: S256Field =
+            (&S256Field::from(x.pow(&3.into())).inner + &S256Field::new(B.clone()).inner)?.into();
+        let beta = alpha.sqrt();
+        let (even_beta, odd_beta) = if &beta.num % 2 == BigInt::from(0) {
+            (beta.clone(), S256Field::new(&(*P).0 - &beta.num))
+        } else {
+            (S256Field::new(&(*P).0 - &beta.num), beta)
+        };
+
+        if is_even {
+            return S256Point::new(x.inner.num, even_beta.inner.num);
+        }
+        S256Point::new(x.inner.num, odd_beta.inner.num)
+    }
+
     pub fn new<A, B>(x: A, y: B) -> Result<S256Point<'a>>
     where
         A: Into<BigInt>,
@@ -263,6 +302,14 @@ fn test_exam_4_1() {
     assert_eq!(
         key.point.sec(false).iter().map(|n| format!("{:02x}", n)).collect::<String>(),
         "04ffe558e388852f0120e46af2d1b370f85854a8eb0841811ece0e3e03d282d57c315dc72890a4f10a1481c031b03b351b0dc79901ca18a00cf009dbdb157a1d10".to_string());
+
+    let p = S256Point::parse(
+        &BigInt::parse_bytes(
+            b"04ffe558e388852f0120e46af2d1b370f85854a8eb0841811ece0e3e03d282d57c315dc72890a4f10a1481c031b03b351b0dc79901ca18a00cf009dbdb157a1d10",
+            16
+        ).unwrap().to_bytes_be().1
+    ).unwrap();
+    assert_eq!(p, key.point);
 }
 
 #[test]
@@ -276,4 +323,12 @@ fn test_exam_4_2() {
             .collect::<String>(),
         "0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1".to_string()
     );
+
+    let p = S256Point::parse(
+        &BigInt::parse_bytes(
+            b"0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1",
+            16
+        ).unwrap().to_bytes_be().1
+    ).unwrap();
+    assert_eq!(p, key.point);
 }
