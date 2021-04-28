@@ -59,6 +59,25 @@ impl<'a> S256Point<'a> {
         let r = &total.p.as_actual().x.num;
         r == &sig.r
     }
+
+    pub fn sec(&self, compressed: bool) -> Vec<u8> {
+        if compressed {
+            if &self.cp.p.as_actual().y.num % 2 == BigInt::from(0) {
+                let mut result = vec![0x02];
+                result.append(&mut self.cp.p.as_actual().x.num.to_bytes_be().1);
+                return result;
+            }
+            let mut result = vec![0x03];
+            result.append(&mut self.cp.p.as_actual().x.num.to_bytes_be().1);
+            return result;
+        }
+
+        let mut result = vec![0x04];
+        result.append(&mut self.cp.p.as_actual().x.num.to_bytes_be().1);
+        result.append(&mut self.cp.p.as_actual().y.num.to_bytes_be().1);
+
+        result
+    }
 }
 
 impl<'a> ops::Deref for S256Point<'a> {
@@ -98,8 +117,8 @@ impl Signature {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PrivateKey<'a> {
-    secret: BigInt,
-    point: S256Point<'a>,
+    pub secret: BigInt,
+    pub point: S256Point<'a>,
 }
 
 impl<'a> PrivateKey<'a> {
@@ -203,4 +222,20 @@ fn test_3_11_4() {
     let sig = Signature::new(r, s);
     let point = S256Point::new(px, py).unwrap();
     assert!(point.verify(z, sig));
+}
+
+#[test]
+fn test_exam_4_1() {
+    let key = PrivateKey::new(BigInt::from(5000));
+    assert_eq!(
+        key.point.sec(false).iter().map(|n| format!("{:02x}", n)).collect::<String>(),
+        "04ffe558e388852f0120e46af2d1b370f85854a8eb0841811ece0e3e03d282d57c315dc72890a4f10a1481c031b03b351b0dc79901ca18a00cf009dbdb157a1d10".to_string());
+}
+
+#[test]
+fn test_exam_4_2() {
+    let key = PrivateKey::new(BigInt::from(5001));
+    assert_eq!(
+        key.point.sec(true).iter().map(|n| format!("{:02x}", n)).collect::<String>(),
+        "0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1".to_string());
 }
