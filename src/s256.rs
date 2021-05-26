@@ -178,6 +178,30 @@ impl Signature {
     fn new(r: BigInt, s: BigInt) -> Self {
         Self { r, s }
     }
+
+    fn der(&self) -> Vec<u8> {
+        let rbin = self.r.to_bytes_be().1;
+        let mut rbin: Vec<u8> = rbin.into_iter().skip_while(|b| b == &0x00).collect();
+        if rbin[0] & 0x80 > 0 {
+            rbin.insert(0, 0x00);
+        }
+
+        let mut result = vec![0x02, rbin.len() as u8];
+        result.append(&mut rbin);
+
+        let sbin = self.s.to_bytes_be().1;
+        let mut sbin: Vec<u8> = sbin.into_iter().skip_while(|b| b == &0x00).collect();
+        if sbin[0] & 0x80 > 0 {
+            sbin.insert(0, 0x00);
+        }
+
+        result.append(&mut vec![0x02, sbin.len() as u8]);
+        result.append(&mut sbin);
+
+        let mut b = vec![0x30, result.len() as u8];
+        b.append(&mut result);
+        b
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -331,4 +355,23 @@ fn test_exam_4_2() {
         ).unwrap().to_bytes_be().1
     ).unwrap();
     assert_eq!(p, key.point);
+}
+
+#[test]
+fn test_exam_4_3() {
+    let r = BigInt::parse_bytes(
+        b"37206a0610995c58074999cb9767b87af4c4978db68c06e8e6e81d282047a7c6",
+        16,
+    )
+    .unwrap();
+    let s = BigInt::parse_bytes(
+        b"8ca63759c1157ebeaec0d03cecca119fc9a75bf8e6d0fa65c841c8e2738cdaec",
+        16,
+    )
+    .unwrap();
+
+    let sig = Signature::new(r, s);
+    let der = sig.der();
+    let hex = der.iter().map(|n| format!("{:02x}", n)).collect::<String>();
+    assert_eq!(hex, "3045022037206a0610995c58074999cb9767b87af4c4978db68c06e8e6e81d282047a7c60221008ca63759c1157ebeaec0d03cecca119fc9a75bf8e6d0fa65c841c8e2738cdaec".to_string());
 }
