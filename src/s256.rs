@@ -1,8 +1,9 @@
 use crate::field_element::{FieldElement, Prime};
+use crate::helper::{encode_base58_checksum, hash160};
 use crate::point::{Curve, CurvePoint};
 use anyhow::Result;
 use num_bigint::{BigInt, Sign};
-use num_traits::{ToPrimitive, Pow};
+use num_traits::Pow;
 use once_cell::sync::Lazy;
 use rand::seq::IteratorRandom;
 use std::ops;
@@ -17,6 +18,7 @@ static C: Lazy<Curve<S256Field>> = Lazy::new(|| {
         P.field_element(B.clone()).into(),
     )
 });
+
 static N: Lazy<BigInt> = Lazy::new(|| {
     BigInt::parse_bytes(
         b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
@@ -39,29 +41,6 @@ static G: Lazy<S256Point> = Lazy::new(|| {
     )
     .unwrap()
 });
-
-static BASE58_ALPHABET: &str = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-fn encode_base58(bytes: &[u8]) -> String {
-    let mut count = 0;
-    for b in bytes {
-        if b == &0 {
-            count += 1;
-            continue;
-        }
-        break;
-    }
-
-    let mut num = BigInt::from_bytes_be(Sign::Plus, bytes);
-    let prefix = "1".repeat(count);
-    let mut result = String::new();
-    while num > 0.into() {
-        let mod_num = (num.clone() % BigInt::from(58)).to_u8().unwrap();
-        num = num / 58;
-        result = format!("{}{}", BASE58_ALPHABET.chars().nth(mod_num.into()).unwrap(), result);
-    }
-    format!("{}{}", prefix, result)
-}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct S256Field<'a> {
@@ -165,6 +144,17 @@ impl<'a> S256Point<'a> {
         result.append(&mut self.cp.p.as_actual().y.num.to_bytes_be().1);
 
         result
+    }
+
+    fn hash160(&self, compressed: bool) -> Vec<u8> {
+        hash160(&self.sec(compressed))
+    }
+
+    fn address(&self, compressed: bool, testnet: bool) -> String {
+        let mut h160 = self.hash160(compressed);
+        let prefix: u8 = if testnet { 0x6f } else { 0x00 };
+        h160.insert(0, prefix);
+        encode_base58_checksum(&h160)
     }
 }
 
@@ -374,9 +364,13 @@ fn test_exam_4_2() {
     let p = S256Point::parse(
         &BigInt::parse_bytes(
             b"0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1",
-            16
-        ).unwrap().to_bytes_be().1
-    ).unwrap();
+            16,
+        )
+        .unwrap()
+        .to_bytes_be()
+        .1,
+    )
+    .unwrap();
     assert_eq!(p, key.point);
 }
 
@@ -400,14 +394,12 @@ fn test_exam_4_3() {
 }
 
 #[test]
-fn test_exam_4_4() {
-    let b = BigInt::parse_bytes(
-        b"7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d",
-        16,
-    )
-    .unwrap().to_bytes_be().1;
+fn test_exam_4_5() {
+    let p = PrivateKey::new(BigInt::from(5002));
+    let address = p.point.address(false, true);
+    assert_eq!(address, "mmTPbXQFxboEtNRkwfh6K51jvdtHLxGeMA".to_string());
 
-    let base58 = encode_base58(&b);
-
-    assert_eq!(base58, "9MA8fRQrT4u8Zj8ZRd6MAiiyaxb2Y1CMpvVkHQu5hVM6".to_string());
+    let p = PrivateKey::new(BigInt::from(2020).pow(&5_u8));
+    let address = p.point.address(true, true);
+    assert_eq!(address, "mopVkxp8UhXqRYbCYJsbeE1h1fiF64jcoH".to_string());
 }

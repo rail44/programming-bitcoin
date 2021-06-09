@@ -1,6 +1,7 @@
 #![feature(trait_alias)]
 
 mod field_element;
+mod helper;
 mod point;
 mod s256;
 
