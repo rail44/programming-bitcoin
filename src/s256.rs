@@ -6,6 +6,7 @@ use num_bigint::{BigInt, Sign};
 use num_traits::Pow;
 use once_cell::sync::Lazy;
 use rand::seq::IteratorRandom;
+use std::convert::TryInto;
 use std::ops;
 
 static A: Lazy<BigInt> = Lazy::new(|| BigInt::from(0));
@@ -250,6 +251,24 @@ impl<'a> PrivateKey<'a> {
         }
         Signature::new(r, s)
     }
+
+    pub fn wif(&self, compressed: bool, testnet: bool) -> String {
+        let mut secret_bytes_right = self.secret.to_bytes_be().1;
+        let l = 32 - secret_bytes_right.len();
+        let mut secret_bytes = Vec::with_capacity(l);
+        for _ in 0..l {
+            secret_bytes.push(0);
+        }
+        secret_bytes.append(&mut secret_bytes_right);
+        let mut result = if testnet { vec![0xef] } else { vec![0x80] };
+
+        result.append(&mut secret_bytes.to_vec());
+
+        if compressed {
+            result.push(0x01);
+        }
+        encode_base58_checksum(&result)
+    }
 }
 
 #[test]
@@ -402,4 +421,13 @@ fn test_exam_4_5() {
     let p = PrivateKey::new(BigInt::from(2020).pow(&5_u8));
     let address = p.point.address(true, true);
     assert_eq!(address, "mopVkxp8UhXqRYbCYJsbeE1h1fiF64jcoH".to_string());
+}
+
+#[test]
+fn test_exam_4_6() {
+    let p = PrivateKey::new(BigInt::parse_bytes(b"54321deadbeef", 16).unwrap());
+    assert_eq!(
+        p.wif(true, true),
+        "cMahea7zqjxrtgAbB7LSGbcQUr1uX1ojuat9qKrpR8M8odsZpvec".to_string()
+    );
 }
