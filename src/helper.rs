@@ -31,7 +31,7 @@ pub fn encode_base58(bytes: &[u8]) -> String {
     format!("{}{}", prefix, result)
 }
 
-fn hash256(b: &[u8]) -> Vec<u8> {
+pub fn hash256(b: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(b);
     let once = hasher.finalize();

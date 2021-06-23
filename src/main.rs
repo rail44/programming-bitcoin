@@ -4,6 +4,7 @@ mod field_element;
 mod helper;
 mod point;
 mod s256;
+mod transaction;
 
 fn main() {
     println!("Hello, world!");
