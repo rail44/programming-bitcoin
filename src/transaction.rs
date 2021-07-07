@@ -1,4 +1,4 @@
-use crate::helper::{hash256, read_variant};
+use crate::helper::{hash256, read_variant, encode_variant};
 use num_bigint::{BigInt, Sign};
 use std::io::Read;
 
@@ -49,8 +49,21 @@ impl Tx {
             .collect::<String>()
     }
 
-    fn serialize(&self) -> Vec<u8> {
-        unimplemented!();
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = self.version.to_le_bytes().to_vec();
+
+        result.append(&mut encode_variant(self.tx_ins.len() as u64));
+        for tx_in in &self.tx_ins {
+            result.append(&mut tx_in.serialize());
+        }
+
+        result.append(&mut encode_variant(self.tx_outs.len() as u64));
+        for tx_out in &self.tx_outs {
+            result.append(&mut tx_out.serialize());
+        }
+
+        result.append(&mut self.locktime.to_le_bytes().to_vec());
+        result
     }
 
     fn hash(&self) -> Vec<u8> {
@@ -60,7 +73,7 @@ impl Tx {
 
 #[derive(Debug, Clone)]
 struct TxIn {
-    prev_tx: BigInt,
+    prev_tx: [u8; 32],
     prev_index: u32,
     script_sig: Script,
     sequence: u32,
@@ -68,7 +81,7 @@ struct TxIn {
 
 impl TxIn {
     pub fn new(
-        prev_tx: BigInt,
+        prev_tx: [u8; 32],
         prev_index: u32,
         script_sig: Option<Script>,
         sequence: u32,
@@ -96,11 +109,19 @@ impl TxIn {
         let mut sequence = [0u8; 4];
         reader.read_exact(&mut sequence).unwrap();
         Self::new(
-            BigInt::from_bytes_le(Sign::Plus, &prev_tx),
+            prev_tx,
             u32::from_le_bytes(prev_index),
             script_sig,
             u32::from_le_bytes(sequence),
         )
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = self.prev_tx.to_vec();
+        result.append(&mut self.prev_index.to_le_bytes().to_vec());
+        result.append(&mut self.script_sig.serialize());
+        result.append(&mut self.sequence.to_le_bytes().to_vec());
+        result
     }
 }
 
@@ -127,6 +148,12 @@ impl TxOut {
         let script_pubkey = ScriptPubKey::parse(reader);
         Self::new(u32::from_le_bytes(amount), script_pubkey)
     }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = self.amount.to_le_bytes().to_vec();
+        result.append(&mut self.script_pubkey.serialize());
+        result
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +170,10 @@ impl Script {
     {
         Script::new()
     }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        vec![]
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -158,5 +189,9 @@ impl ScriptPubKey {
         R: Read,
     {
         ScriptPubKey::new()
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        vec![]
     }
 }
