@@ -6,9 +6,7 @@ use num_bigint::{BigInt, Sign};
 use num_traits::Pow;
 use once_cell::sync::Lazy;
 use rand::seq::IteratorRandom;
-use std::convert::TryInto;
 use std::ops;
-use std::io::Read;
 
 static A: Lazy<BigInt> = Lazy::new(|| BigInt::from(0));
 static B: Lazy<BigInt> = Lazy::new(|| BigInt::from(7));
@@ -431,48 +429,4 @@ fn test_exam_4_6() {
         p.wif(true, true),
         "cMahea7zqjxrtgAbB7LSGbcQUr1uX1ojuat9qKrpR8M8odsZpvec".to_string()
     );
-}
-
-pub fn read_variant<R>(reader: R) -> u64 where R: Read {
-    let i: [u8; 1];
-    reader.read(&mut i);
-    let i = i[0];
-    if i == 0xfd {
-        let b: [u8; 2];
-        reader.read(&mut b);
-        return u16::from_le_bytes(b) as u64;
-    }
-    if i == 0xfe {
-        let b: [u8; 4];
-        reader.read(&mut b);
-        return u32::from_le_bytes(b) as u64;
-    }
-    if i == 0xff {
-        let b: [u8; 8];
-        reader.read(&mut b);
-        return u64::from_le_bytes(b);
-    }
-    i as u64
-}
-
-pub fn encode_variant(i: u64) -> Vec<u8> {
-    if i < 0xfd {
-        return vec![i as u8];
-    }
-    if i < 0x10000 {
-        let mut result = vec![0xfd];
-        result.append(&mut i.to_le_bytes().to_vec());
-        return result;
-    }
-    if i < 0x100000000 {
-        let mut result = vec![0xfe];
-        result.append(&mut i.to_le_bytes().to_vec());
-        return result;
-    }
-    if i < 0x1000000000000 {
-        let mut result = vec![0xff];
-        result.append(&mut i.to_le_bytes().to_vec());
-        return result;
-    }
-    unreachable!();
 }

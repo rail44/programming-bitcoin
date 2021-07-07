@@ -3,6 +3,7 @@ use num_bigint::{BigInt, Sign};
 use num_traits::ToPrimitive;
 use ripemd160::Ripemd160;
 use sha2::Sha256;
+use std::io::Read;
 
 static BASE58_ALPHABET: &str = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -50,6 +51,53 @@ pub fn hash160(s: &[u8]) -> Vec<u8> {
     sha_hasher.update(s);
     ripemd_hasher.update(sha_hasher.finalize());
     ripemd_hasher.finalize().to_vec()
+}
+
+pub fn read_variant<R>(reader: &mut R) -> u64
+where
+    R: Read,
+{
+    let mut i = [0u8; 1];
+    reader.read_exact(&mut i).unwrap();
+    let i = i[0];
+    if i == 0xfd {
+        let mut b = [0u8; 2];
+        reader.read_exact(&mut b).unwrap();
+        return u16::from_le_bytes(b) as u64;
+    }
+    if i == 0xfe {
+        let mut b = [0u8; 4];
+        reader.read_exact(&mut b).unwrap();
+        return u32::from_le_bytes(b) as u64;
+    }
+    if i == 0xff {
+        let mut b = [0u8; 8];
+        reader.read_exact(&mut b).unwrap();
+        return u64::from_le_bytes(b);
+    }
+    i as u64
+}
+
+pub fn encode_variant(i: u64) -> Vec<u8> {
+    if i < 0xfd {
+        return vec![i as u8];
+    }
+    if i < 0x10000 {
+        let mut result = vec![0xfd];
+        result.append(&mut i.to_le_bytes().to_vec());
+        return result;
+    }
+    if i < 0x100000000 {
+        let mut result = vec![0xfe];
+        result.append(&mut i.to_le_bytes().to_vec());
+        return result;
+    }
+    if i < 0x1000000000000 {
+        let mut result = vec![0xff];
+        result.append(&mut i.to_le_bytes().to_vec());
+        return result;
+    }
+    unreachable!();
 }
 
 #[test]
